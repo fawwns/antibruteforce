@@ -1,23 +1,48 @@
 package lists
 
 import (
+	"context"
 	"net"
 	"sync"
 
 	"github.com/fawwns/antibruteforce/internal/logger"
+	"github.com/fawwns/antibruteforce/internal/postgres"
 )
 
 type Lists struct {
 	whitelist []net.IPNet
 	blacklist []net.IPNet
 	mu        sync.RWMutex
+
+	storage *postgres.Postgres
 }
 
-func New() *Lists {
+func New(storage *postgres.Postgres) *Lists {
 	return &Lists{
 		whitelist: make([]net.IPNet, 0),
 		blacklist: make([]net.IPNet, 0),
+		storage:   storage,
 	}
+}
+
+func (l *Lists) LoadFromDB(ctx context.Context) error {
+	w, err := l.storage.GetWhitelist(ctx)
+	if err != nil {
+		return err
+	}
+	b, err := l.storage.GetBlacklist(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, cidr := range w {
+		l.AddToWhitelist(cidr)
+	}
+	for _, cidr := range b {
+		l.AddToBlacklist(cidr)
+	}
+
+	return nil
 }
 
 // AddToWhitelist добавляет CIDR-сеть в белый список.
@@ -89,7 +114,7 @@ func (l *Lists) RemoveFromBlacklist(cidr string) error {
 		}
 	}
 
-	l.whitelist = newList
+	l.blacklist = newList
 	logger.Info.Println("Network " + network.String() + " removed from blacklist")
 	return nil
 }
@@ -118,4 +143,20 @@ func (l *Lists) InBlacklist(ip net.IP) bool {
 		}
 	}
 	return false
+}
+
+func (l *Lists) AddToWhitelistDB(ctx context.Context, cidr string) error {
+	return l.storage.AddToWhitelist(ctx, cidr)
+}
+
+func (l *Lists) RemoveFromWhitelistDB(ctx context.Context, cidr string) error {
+	return l.storage.RemoveFromWhitelist(ctx, cidr)
+}
+
+func (l *Lists) AddToBlacklistDB(ctx context.Context, cidr string) error {
+	return l.storage.AddToBlacklist(ctx, cidr)
+}
+
+func (l *Lists) RemoveFromBlacklistDB(ctx context.Context, cidr string) error {
+	return l.storage.RemoveFromBlacklist(ctx, cidr)
 }

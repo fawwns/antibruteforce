@@ -1,84 +1,133 @@
-# AntiBruteforce Service
+# Anti-Bruteforce Service
 
-Сервис для защиты от brute force-атак.  
-Позволяет ограничивать попытки по **логину**, **паролю** и **IP**, а также управлять whitelist/blacklist.
+Сервис предназначен для борьбы с подбором паролей при авторизации в какой-либо системе.
+Сервис вызывается перед авторизацией пользователя и может либо разрешить, либо заблокировать попытку.
+Предполагается, что сервис используется только для server-server, т.е. скрыт от конечного пользователя.
 
----
+Ограничивает количество попыток аутентификации по:
+- логину
+- паролю
+- IP-адресу
 
-## 🚀 Возможности
-
-- Rate limiter на основе "token bucket"-механизма  
-  (ограничение количества попыток в минуту)
-- Отдельные лимиты:  
-  - по логину  
-  - по паролю  
-  - по IP  
-- Управление списками допуска:
-  - whitelist (разрешённые подсети)
-  - blacklist (заблокированные подсети)
-- Очистка неактивных бакетов (TTL)
-- Логирование запросов и действий сервиса
+Поддерживает whitelist и blacklist IP-адресов.
 
 ---
 
-## 🧱 Архитектура
+## Стек
 
-Проект разбит на модули:
-cmd/
-antibruteforce/ — точка входа (main.go)
+- Go
+- PostgreSQL
+- Docker
+- Docker Compose
 
-internal/
-bucket/ — реализация bucket + store (хранилище бакетов)
-config/ — загрузка настроек из .env
-httpapi/ — HTTP-хендлеры и роутер
-lists/ — whitelist и blacklist
-logger/ — простой логгер
-service/ — основная бизнес-логика AntiBruteforce
+---
 
-### Краткое описание модулей
+## Сборка и запуск
 
-#### `bucket/`
-Хранит состояние по каждому ключу (login/password/IP).  
-Содержит:
-- `Bucket` — счётчик + лимит + время последнего обновления
-- `Store` — map с блокировками, TTL-очистка
+Проект управляется через `Makefile`.
 
-#### `lists/`
-Содержит:
-- CIDR-сети в whitelist
-- CIDR-сети в blacklist
-- Потокобезопасные методы добавления/удаления
+---
+### Сборка бинарника
 
-#### `service/`
-Главный модуль, который:
-- выполняет проверку попытки  
-- проверяет списки whitelist/blacklist  
-- работает с тремя различными бакет-хранилищами  
-- предоставляет методы для API-хендлеров
+```bash
+make build
+```
 
-#### `httpapi/`
-- `handlers.go` — обработчики HTTP-запросов  
-- `router.go` — настройка маршрутов
+В результате будет собран бинарный файл:
 
-#### `config/`
-Грузит переменные из `.env`
+```bash
+bin/antibruteforce
+```
+
+---
+### Запуск сервиса
+
+```bash
+make run
+```
+
+Команда запускает сервис и базу данных через `docker compose up`.
+
+Для остановки:
+
+```bash
+make down
+```
+
+---
+
+## Тестирование
+
+```bash
+make test
+```
+
+Запускаются все unit и integration тесты.
+
+---
+
+## Конфигурация
+
+Сервис настраивается через переменные окружения.
+
+Пример `.env`:
+
+```env
+PORT=8080
+LIMIT_LOGIN=10
+LIMIT_PASSWORD=100
+LIMIT_IP=1000
+
+# Для контейнера
+POSTGRES_HOST=antibruteforce_db
+POSTGRES_PORT=5432
+POSTGRES_USER=antibruteforce
+POSTGRES_PASSWORD=secret
+POSTGRES_DB=antibruteforce
+
+# Для локального теста
+LOCAL_POSTGRES_HOST=127.0.0.1
+LOCAL_POSTGRES_PORT=5432
+```
+---
+
+## CLI
+
+### whitelist / blacklist
+  `antibruteforce-cli whitelist add <cidr>`
+  `antibruteforce-cli whitelist remove <cidr>`
+  `antibruteforce-cli blacklist add <cidr>`
+  `antibruteforce-cli blacklist remove <cidr>`
+
+### backet
+  `antibruteforce-cli bucket reset`
+
+---
+
+## API
+
+### whitelist / blacklist
+
+#### Добавление IP в whitelist / blacklist
+`/whitelist/add"`
+`/blacklist/add`
+
+#### Удаление IP из whitelist / blacklist
+`/whitelist/remove`
+`/blacklist/remove`
 
 
-## 📝 Статус проекта
+### backet
+`/check`
 
-**Готово:**
-- архитектура
-- основной сервис
-- bucket-механизм
-- API-эндпоинты
-- whitelist/blacklist
-- логгер
-- очистка по TTL
-- Graceful shutdown
-- Makefile
+#### Сброс bucket
+`/bucket/reset`
+---
 
-**Дальнейшая разработка:**
+## Логика ограничений
 
-- тесты(юнит/интеграционные)
-- Dockerfile
-- CLI-интерфейс
+* лимит по логину
+* лимит по паролю
+* лимит по IP-адресу
+
+Whitelist всегда разрешает запросы, blacklist — всегда блокирует.

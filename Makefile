@@ -1,13 +1,25 @@
-.PHONY: run build test clean
+.PHONY: build run test clean down
 
-run:
-	go run ./cmd/antibruteforce/main.go
+APP_NAME=antibruteforce
+BIN_DIR=bin
+MAIN=./cmd/antibruteforce/main.go
 
 build:
-	go build -o bin/antibruteforce ./cmd/antibruteforce
+	@echo "🔨 Building $(APP_NAME)..."
+	go build -o $(BIN_DIR)/$(APP_NAME) $(MAIN)
+
+run:
+	@echo "🐳 Starting service with docker-compose..."
+	docker compose up --build
+
+down:
+	@echo "🛑 Stopping docker-compose..."
+	docker compose down
 
 test:
+	@echo "🧪 Running tests..."
 	go test ./...
 
 clean:
-	rm -rf bin/*
+	@echo "🧹 Cleaning build artifacts..."
+	rm -rf $(BIN_DIR)

@@ -13,6 +13,16 @@ type Config struct {
 	LimitLogin    int
 	LimitPassword int
 	LimitIP       int
+
+	Postgres PostgresConfig
+}
+
+type PostgresConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	DBName   string
 }
 
 func Load() *Config {
@@ -25,7 +35,11 @@ func Load() *Config {
 	cfg.LimitLogin = getEnvAsInt("LIMIT_LOGIN", 10)
 	cfg.LimitPassword = getEnvAsInt("LIMIT_PASSWORD", 100)
 	cfg.LimitIP = getEnvAsInt("LIMIT_IP", 1000)
-
+	cfg.Postgres.Host = getEnv("POSTGRES_HOST", "antibruteforce_db")
+	cfg.Postgres.Port = getEnv("POSTGRES_PORT", "5432")
+	cfg.Postgres.User = getEnv("POSTGRES_USER", "antibruteforce")
+	cfg.Postgres.Password = getEnv("POSTGRES_PASSWORD", "secret")
+	cfg.Postgres.DBName = getEnv("POSTGRES_DB", "antibruteforce")
 	log.Printf("Config loaded: %+v\n", cfg)
 	return cfg
 }

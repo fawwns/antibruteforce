@@ -38,6 +38,11 @@ func (h *Handler) Check(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func (h *Handler) ResetBucket(w http.ResponseWriter, r *http.Request) {
+	h.svc.ResetBuckets()
+	w.Write([]byte(`{"result": "ok"}`))
+}
+
 func (h *Handler) AddWhitelist(w http.ResponseWriter, r *http.Request) {
 	cidr := r.URL.Query().Get("cidr")
 	if cidr == "" {
@@ -69,4 +74,33 @@ func (h *Handler) AddBlacklist(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info.Printf("Add to Blacklist: %s", cidr)
 	w.Write([]byte(`{"result": "ok"}`))
+}
+
+func (h *Handler) RemoveFromWhitelist(w http.ResponseWriter, r *http.Request) {
+	cidr := r.URL.Query().Get("cidr")
+	if cidr == "" {
+		http.Error(w, "cidr required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.RemoveFromWhitelist(cidr); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Write([]byte(`{"result":"ok"}`))
+}
+func (h *Handler) RemoveFromBlacklist(w http.ResponseWriter, r *http.Request) {
+	cidr := r.URL.Query().Get("cidr")
+	if cidr == "" {
+		http.Error(w, "cidr required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.RemoveFromBlacklist(cidr); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Write([]byte(`{"result":"ok"}`))
 }
