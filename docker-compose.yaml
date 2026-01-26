@@ -1,0 +1,39 @@
+services:
+  api:
+    build: .
+    container_name: antibruteforce_api
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      - antibruteforce-net
+
+  db:
+    container_name: antibruteforce_db
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: antibruteforce
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: antibruteforce
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - antibruteforce-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U antibruteforce"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+networks:
+  antibruteforce-net:
+
+volumes:
+  pgdata:
